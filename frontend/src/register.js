@@ -1,16 +1,25 @@
+/**
+ * Register Component
+ * Handles new user registration for the messaging platform
+ */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './style.css'; // Chat.css dosyasını içe aktar
+import './style.css';
 
 function Register() {
+    // State variables for form inputs and error handling
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
     const navigate = useNavigate();
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        setError('');
+    /**
+     * Handles the registration form submission
+     * @param {Event} event - Form submission event
+     */
+    const handleRegister = async (event) => {
+        event.preventDefault();
+        setErrorMessage('');
 
         const response = await fetch('http://localhost:8000/users/', {
             method: 'POST',
@@ -24,23 +33,26 @@ function Register() {
             navigate('/login');
         } else {
             const errorData = await response.json();
-            setError(errorData.detail);
+            setErrorMessage(errorData.detail);
         }
     };
 
-    const handleLoginRedirect = () => {
-        navigate('/login'); // Giriş sayfasına yönlendirme
+    /**
+     * Navigates to the login page
+     */
+    const navigateToLogin = () => {
+        navigate('/login');
     };
 
     return (
         <div className="normal-container">
             <div className="chat-header">
-                <h1>Chattin'e kayıt ol!</h1>
+                <h1>Register for Secure Messaging</h1>
             </div>
             <div className="message-header">
                 <form onSubmit={handleRegister} className="form-container">
                     <div className="form-group">
-                        <label>Kullanıcı Adı:</label>
+                        <label>Username:</label>
                         <input
                             type="text"
                             value={username}
@@ -48,9 +60,9 @@ function Register() {
                             required
                         />
                     </div>
-                    {error && <p className="form-error">{error}</p>}
+                    {errorMessage && <p className="form-error">{errorMessage}</p>}
                     <div className="form-group">
-                        <label>Şifre:</label>
+                        <label>Password:</label>
                         <input
                             type="password"
                             value={password}
@@ -58,13 +70,13 @@ function Register() {
                             required
                         />
                     </div>
-                    <button type="submit" className="logout-button">Kayıt Ol</button>
+                    <button type="submit" className="logout-button">Register</button>
                 </form>
             </div>
 
             <div className="user-info" style={{ justifyContent: 'right', marginRight: '40px'}}>
             <p>
-                Zaten kayıtlıysanız, <span style={{ cursor: 'pointer', color: 'blue' }} onClick={handleLoginRedirect}>giriş yapın.</span>.
+                Already have an account? <span style={{ cursor: 'pointer', color: 'blue' }} onClick={navigateToLogin}>Login here</span>.
             </p>
             </div>
         </div>

@@ -1,3 +1,10 @@
+/**
+ * SUGGESTED FILE RENAME: chat_backup.js
+ * 
+ * Chat Component (Backup/Alternative Version)
+ * This file appears to be a backup or alternative implementation of the Chat component
+ * Handles real-time messaging between users via WebSocket
+ */
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -5,29 +12,37 @@ import { FaUser, FaSignOutAlt, FaComments, FaPaperPlane, FaGlobeAmericas } from 
 import './chat.css';
 
 function Chat() {
-  const [messages, setMessages] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [chatUsers, setChatUsers] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  // State variables for messages and user management
+  const [messageList, setMessageList] = useState([]);
+  const [userList, setUserList] = useState([]);
+  const [chatUserList, setChatUserList] = useState([]);
+  const [onlineUserList, setOnlineUserList] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
-  const socket = useRef(null); // WebSocket referansı
+  const webSocketRef = useRef(null);
 
+  /**
+   * Handles user logout
+   * Clears local storage and closes WebSocket connection
+   */
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('userId');
-    if (socket.current) {
-      socket.current.close(); // WebSocket'i kapat
+    if (webSocketRef.current) {
+      webSocketRef.current.close();
     }
     navigate('/');
   };
 
+  /**
+   * Effect hook to initialize WebSocket connection and fetch user data
+   */
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const accessToken = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
+    const currentUsername = localStorage.getItem('username');
     if (!token) {
       navigate('/'); // Eğer token yoksa login sayfasına yönlendir
     }

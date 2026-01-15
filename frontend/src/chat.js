@@ -1,3 +1,8 @@
+/**
+ * Chat Component
+ * Handles real-time messaging between users via WebSocket
+ * Manages user lists, message history, and live communication
+ */
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -5,115 +10,141 @@ import { FaUser, FaSignOutAlt, FaComments, FaPaperPlane, FaGlobeAmericas } from 
 import './style.css';
 
 function Chat() {
-  const [messages, setMessages] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [chatUsers, setChatUsers] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState([]);
+  // State variables for messages and user management
+  const [messageList, setMessageList] = useState([]);
+  const [userList, setUserList] = useState([]);
+  const [chatUserList, setChatUserList] = useState([]);
+  const [onlineUserList, setOnlineUserList] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const navigate = useNavigate();
-  const socket = useRef(null); // WebSocket referansı
+  const webSocketRef = useRef(null);
 
+  /**
+   * Handles user logout
+   * Clears local storage and closes WebSocket connection
+   */
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
     localStorage.removeItem('userId');
-    if (socket.current) {
-      socket.current.close(); // WebSocket'i kapat
+    if (webSocketRef.current) {
+      webSocketRef.current.close();
     }
     navigate('/');
   };
 
+  /**
+   * Effect hook to initialize WebSocket connection and fetch user data
+   * Runs on component mount and handles cleanup on unmount
+   */
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const accessToken = localStorage.getItem('token');
     const userId = localStorage.getItem('userId');
-    const username = localStorage.getItem('username');
-    if (!token) {
-      navigate('/'); // Eğer token yoksa login sayfasına yönlendir
+    const currentUsername = localStorage.getItem('username');
+    if (!accessToken) {
+      navigate('/');
     }
 
-    // WebSocket bağlantısını aç
-    socket.current = new WebSocket(`ws://localhost:8000/ws/${username}`);
+    // Establish WebSocket connection
+    webSocketRef.current = new WebSocket(`ws://localhost:8000/ws/${currentUsername}`);
 
-    socket.current.onopen = () => {
-      console.log('WebSocket bağlantısı kuruldu');
+    webSocketRef.current.onopen = () => {
+      console.log('WebSocket connection established');
     };
 
-    socket.current.onmessage = (event) => {
-      const messageData = JSON.parse(event.data);
-      setMessages((prevMessages) => [...prevMessages, messageData]);
+    webSocketRef.current.onmessage = (event) => {
+      const incomingMessage = JSON.parse(event.data);
+      setMessageList((prevMessages) => [...prevMessages, incomingMessage]);
     };
 
-    socket.current.onerror = (error) => {
-      console.error('WebSocket hatası:', error);
+    webSocketRef.current.onerror = (error) => {
+      console.error('WebSocket error:', error);
     };
 
-    socket.current.onclose = () => {
-      console.log('WebSocket bağlantısı kapandı');
+    webSocketRef.current.onclose = () => {
+      console.log('WebSocket connection closed');
     };
 
-    const fetchData = async () => {
+    /**
+     * Fetches all required user data from the server
+     */
+    const fetchUserData = async () => {
       try {
+        // Fetch all users
         const userResponse = await axios.get('http://localhost:8000/users/', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
-        const filteredUsers = userResponse.data.filter(user => user.username !== username);
-        setUsers(filteredUsers);
+        const filteredUsers = userResponse.data.filter(user => user.username !== currentUsername);
+        setUserList(filteredUsers);
 
+        // Fetch users with existing chat history
         const chatUserResponse = await axios.get(`http://localhost:8000/users/chat/?user_id=${userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
-        const filteredChatUsers = chatUserResponse.data.filter(user => user.username !== username);
-        setChatUsers(filteredChatUsers);
+        const filteredChatUsers = chatUserResponse.data.filter(user => user.username !== currentUsername);
+        setChatUserList(filteredChatUsers);
 
+        // Fetch online users
         const onlineUserResponse = await axios.get('http://localhost:8000/online-users/', {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${accessToken}` }
         });
-        setOnlineUsers(onlineUserResponse.data);
-      } catch (err) {
-        console.log('Error fetching data:', err.response ? err.response.data : err.message);
+        setOnlineUserList(onlineUserResponse.data);
+      } catch (error) {
+        console.log('Error fetching data:', error.response ? error.response.data : error.message);
       }
     };
 
-    fetchData();
+    fetchUserData();
 
+    // Cleanup: close WebSocket on component unmount
     return () => {
-      socket.current.close();
+      webSocketRef.current.close();
     };
   }, [navigate]);
 
-  const fetchMessagesWithUser = async (recipient_id, username) => {
-    const token = localStorage.getItem('token');
+  /**
+   * Fetches message history with a specific user
+   * @param {number} recipientId - The ID of the recipient user
+   * @param {string} recipientUsername - The username of the recipient
+   */
+  const fetchMessagesWithUser = async (recipientId, recipientUsername) => {
+    const accessToken = localStorage.getItem('token');
     try {
-      setSelectedUser({ id: recipient_id, username: username });
+      setSelectedUser({ id: recipientId, username: recipientUsername });
 
-      const response = await axios.get(`http://localhost:8000/messages/?user_id=${localStorage.getItem('userId')}&target_user_id=${recipient_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await axios.get(`http://localhost:8000/messages/?user_id=${localStorage.getItem('userId')}&target_user_id=${recipientId}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
       });
 
-      setMessages(response.data.messages);
-    } catch (err) {
-      console.log('Error fetching messages with user:', err.response ? err.response.data : err.message);
+      setMessageList(response.data.messages);
+    } catch (error) {
+      console.log('Error fetching messages with user:', error.response ? error.response.data : error.message);
     }
   };
 
+  /**
+   * Sends a new message via WebSocket
+   * Validates connection state before sending
+   */
   const sendMessage = async () => {
-    if (!socket.current || socket.current.readyState !== WebSocket.OPEN) {
-      console.error('WebSocket bağlantısı kapalı, mesaj gönderilemedi');
+    if (!webSocketRef.current || webSocketRef.current.readyState !== WebSocket.OPEN) {
+      console.error('WebSocket connection closed, message could not be sent');
       return;
     }
 
     const senderId = localStorage.getItem('userId');
-    const messageToSend = {
+    const messagePayload = {
       sender_id: senderId,
       recipient_id: selectedUser.id,
       content: newMessage,
     };
-    console.log('Mesaj gönderiliyor:', messageToSend);
+    console.log('Sending message:', messagePayload);
 
-    socket.current.send(JSON.stringify(messageToSend));
+    webSocketRef.current.send(JSON.stringify(messagePayload));
 
-    setMessages((prevMessages) => [
+    // Add message to local state immediately for instant feedback
+    setMessageList((prevMessages) => [
       ...prevMessages,
       {
         id: Date.now(),
@@ -126,17 +157,17 @@ function Chat() {
     setNewMessage('');
   };
 
-  const username = localStorage.getItem('username');
+  const currentUsername = localStorage.getItem('username');
 
   return (
     <div className="chat-container">
       <header className="chat-header">
-        <h2>Chattin</h2>
+        <h2>Secure Messaging</h2>
         <div className="user-info">
-          {username && <p>{username}, hoş geldin!</p>}
+          {currentUsername && <p>Welcome, {currentUsername}!</p>}
           <button onClick={handleLogout} className="logout-button">
             <FaSignOutAlt className="icon" />
-            Oturumu Kapat
+            Logout
           </button>
         </div>
       </header>
@@ -144,44 +175,44 @@ function Chat() {
       <div className="chat-content">
         <div className="sidebar">
           <div className="users-list">
-            <h3>Eski Mesajlar</h3>
-            {chatUsers
+            <h3>Recent Messages</h3>
+            {chatUserList
               .sort((a, b) => {
-                const aIsOnline = onlineUsers.some((onlineUser) => onlineUser.username === a.username);
-                const bIsOnline = onlineUsers.some((onlineUser) => onlineUser.username === b.username);
+                const aIsOnline = onlineUserList.some((onlineUser) => onlineUser.username === a.username);
+                const bIsOnline = onlineUserList.some((onlineUser) => onlineUser.username === b.username);
                 return bIsOnline - aIsOnline;
               })
               .map((user) => (
                 <div
                   key={user.id}
                   onClick={() => fetchMessagesWithUser(user.id, user.username)}
-                  className={`user-item ${onlineUsers.some((onlineUser) => onlineUser.id === user.id) ? 'online' : ''}`}
+                  className={`user-item ${onlineUserList.some((onlineUser) => onlineUser.id === user.id) ? 'online' : ''}`}
                 >
                   <FaUser className="icon" />
                   {user.username}
-                  {onlineUsers.some((onlineUser) => onlineUser.id === user.id) && (
+                  {onlineUserList.some((onlineUser) => onlineUser.id === user.id) && (
                     <FaGlobeAmericas className="online-icon" />
                   )}
                 </div>
               ))}
 
-            <h3>Tüm Kullanıcılar</h3>
-            {users
-              .filter(user => !chatUsers.some(chatUser => chatUser.id === user.id))
+            <h3>All Users</h3>
+            {userList
+              .filter(user => !chatUserList.some(chatUser => chatUser.id === user.id))
               .sort((a, b) => {
-                const aIsOnline = onlineUsers.some((onlineUser) => onlineUser.username === a.username);
-                const bIsOnline = onlineUsers.some((onlineUser) => onlineUser.username === b.username);
+                const aIsOnline = onlineUserList.some((onlineUser) => onlineUser.username === a.username);
+                const bIsOnline = onlineUserList.some((onlineUser) => onlineUser.username === b.username);
                 return bIsOnline - aIsOnline;
               })
               .map((user) => (
                 <div
                   key={user.id}
                   onClick={() => fetchMessagesWithUser(user.id, user.username)}
-                  className={`user-item ${onlineUsers.some((onlineUser) => onlineUser.username === user.username) ? 'online' : ''}`}
+                  className={`user-item ${onlineUserList.some((onlineUser) => onlineUser.username === user.username) ? 'online' : ''}`}
                 >
                   <FaUser className="icon" />
                   {user.username}
-                  {onlineUsers.some((onlineUser) => onlineUser.username === user.username) && (
+                  {onlineUserList.some((onlineUser) => onlineUser.username === user.username) && (
                     <FaGlobeAmericas className="online-icon" />
                   )}
                 </div>
@@ -193,24 +224,24 @@ function Chat() {
           {selectedUser ? (
             <>
               <div className="message-header">
-                <h3>{selectedUser.username}'e Mesaj</h3>
+                <h3>Message to {selectedUser.username}</h3>
               </div>
               <div className="message-list">
-                {messages.length > 0 ? (
-                  messages.map((message, index) => (
+                {messageList.length > 0 ? (
+                  messageList.map((message, index) => (
                     <div
                       key={`${message.id}-${index}`}
                       className={`message ${message.sender_id === parseInt(localStorage.getItem('userId'), 10) ? 'sent' : 'received'}`}
                     >
                       <span className="message-content">
                         <strong>
-                          {message.sender_id === parseInt(localStorage.getItem('userId'),10) ? 'Ben' : selectedUser.username}:
+                          {message.sender_id === parseInt(localStorage.getItem('userId'), 10) ? 'Me' : selectedUser.username}:
                         </strong> {message.content}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="no-messages">Geçmiş mesaj yok</p>
+                  <p className="no-messages">No message history</p>
                 )}
               </div>
               <div className="message-input">
@@ -218,18 +249,18 @@ function Chat() {
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Mesajınızı yazın..."
+                  placeholder="Type your message..."
                 />
                 <button onClick={sendMessage} className="send-button">
                   <FaPaperPlane className="icon" />
-                  Gönder
+                  Send
                 </button>
               </div>
             </>
           ) : (
             <div className="no-user-selected">
               <FaComments className="large-icon" />
-              <p>Bir kullanıcı seç ve Chatmeye başla!</p>
+              <p>Select a user to start messaging!</p>
             </div>
           )}
         </div>

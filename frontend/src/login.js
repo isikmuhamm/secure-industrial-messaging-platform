@@ -1,21 +1,33 @@
+/**
+ * Login Component
+ * Handles user authentication for the messaging platform
+ */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function Login() {
+  // State variables for form inputs and error handling
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
-  const goToRegister = () => {
-    navigate('/register'); // Kayıt sayfasına yönlendir
-};
+  /**
+   * Navigates to the registration page
+   */
+  const navigateToRegister = () => {
+    navigate('/register');
+  };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  /**
+   * Handles the login form submission
+   * @param {Event} event - Form submission event
+   */
+  const handleLogin = async (event) => {
+    event.preventDefault();
     try {
-      // Giriş isteği yap
+      // Send authentication request
       const response = await axios.post(
         'http://localhost:8000/token',
         new URLSearchParams({
@@ -29,27 +41,27 @@ function Login() {
         }
       );
 
-      const token = response.data.access_token; // Token'ı al
-      const userId = response.data.user_id; // User ID'yi al
+      const accessToken = response.data.access_token;
+      const userId = response.data.user_id;
 
-      // Token, kullanıcı ID'si ve kullanıcı adını localStorage'a kaydet
-      localStorage.setItem('token', token);
+      // Store token, user ID and username in localStorage
+      localStorage.setItem('token', accessToken);
       localStorage.setItem('userId', userId);
       localStorage.setItem('username', username);
 
-      // WebSocket bağlantısını kur
-      const socket = new WebSocket(`ws://localhost:8000/ws/${username}`);
-      socket.onopen = () => {
-        console.log('WebSocket bağlantısı kuruldu');
+      // Establish WebSocket connection
+      const webSocket = new WebSocket(`ws://localhost:8000/ws/${username}`);
+      webSocket.onopen = () => {
+        console.log('WebSocket connection established');
       };
-      socket.onclose = () => {
-        console.log('WebSocket bağlantısı kapandı');
+      webSocket.onclose = () => {
+        console.log('WebSocket connection closed');
       };
 
-      // Giriş başarılı, chat sayfasına yönlendir
+      // Login successful, redirect to chat page
       navigate('/chat');
-    } catch (err) {
-      setError('Kullanıcı adı veya şifre yanlış');
+    } catch (error) {
+      setErrorMessage('Invalid username or password');
     }
   };
 
@@ -59,13 +71,13 @@ function Login() {
   return (
     <div className="normal-container">
       <div className="chat-header">
-      <h1>Chattin'e Giriş Yap</h1>
+      <h1>Login to Secure Messaging</h1>
       </div>
     <div className="message-header">
-    {error && <p className="form-error">{error}</p>}
+    {errorMessage && <p className="form-error">{errorMessage}</p>}
     <form onSubmit={handleLogin} className="form-container">
         <div className="form-group">
-            <label>Kullanıcı Adı:</label>
+            <label>Username:</label>
             <input
                 type="text"
                 value={username}
@@ -74,7 +86,7 @@ function Login() {
             />
         </div>
         <div className="form-group">
-            <label>Şifre:</label>
+            <label>Password:</label>
             <input
                 type="password"
                 value={password}
@@ -82,12 +94,12 @@ function Login() {
                 required
             />
         </div>
-        <button type="submit" className="send-button">Giriş Yap</button>
+        <button type="submit" className="send-button">Login</button>
       </form>
     </div>
         <div className="user-info" style={{ justifyContent: 'right', marginRight: '40px'}}>
             <p>
-                Eğer kayıtlı değilseniz, <span style={{ cursor: 'pointer', color: 'blue' }} onClick={goToRegister}>kayıt olun</span>.
+                If you don't have an account, <span style={{ cursor: 'pointer', color: 'blue' }} onClick={navigateToRegister}>register here</span>.
             </p>
         </div>
     </div>

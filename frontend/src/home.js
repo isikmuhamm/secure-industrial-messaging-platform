@@ -1,29 +1,39 @@
-// src/Home.js
+/**
+ * Home Component
+ * Landing page for the Secure Industrial Messaging Platform
+ * Provides navigation to login and registration pages
+ */
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // react-router-dom'dan yönlendirme için
-import './style.css'; // Chat.css dosyasını içe aktar
+import { useNavigate } from 'react-router-dom';
+import './style.css';
 
 const Home = () => {
-    const navigate = useNavigate(); // useNavigate ile yönlendirme fonksiyonu
+    const navigate = useNavigate();
 
-    const goToRegister = () => {
-        navigate('/register'); // Kayıt sayfasına yönlendir
+    /**
+     * Navigates to the registration page
+     */
+    const navigateToRegister = () => {
+        navigate('/register');
     };
 
-    const goToLogin = () => {
-        navigate('/login'); // Giriş sayfasına yönlendir
+    /**
+     * Navigates to the login page
+     */
+    const navigateToLogin = () => {
+        navigate('/login');
     };
 
     return (
-        <div className="normal-container"> {/* Chat.css'ten stil uygulanıyor */}
+        <div className="normal-container">
             <div className="chat-header">
-                <h1>Bugün Chattin mi?</h1>
+                <h1>Secure Industrial Messaging</h1>
             </div>
             <div className="message-header">
-                <h1>Canlı chatmek için chattini seçin!</h1>
+                <h1>Start secure communication today!</h1>
                 <div className="user-info" style={{ alignItems: 'center', marginBottom: '40px'}}>
-                <button onClick={goToLogin} className="send-button" >Login</button>
-                <button onClick={goToRegister} className="logout-button">Register</button>
+                <button onClick={navigateToLogin} className="send-button" >Login</button>
+                <button onClick={navigateToRegister} className="logout-button">Register</button>
                 </div>
             </div>
         </div>
